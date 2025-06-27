@@ -1,253 +1,22 @@
-/**
- * Debug: mostra cosa vede il sistema
- */
-function debugDatiClienti() {
-  console.log('🔍 DEBUG DATI CLIENTI');
-  console.log('===================');
-  
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Clienti');
-  
-  if (!sheet) {
-    console.log('❌ Foglio "Clienti" non trovato!');
-    console.log('Fogli disponibili:');
-    SpreadsheetApp.getActiveSpreadsheet().getSheets().forEach(s => {
-      console.log(`  - "${s.getName()}"`);
-    });
-    return;
-  }
-  
-  console.log('✅ Foglio "Clienti" trovato');
-  
-  const data = sheet.getDataRange().getValues();
-  console.log(`Righe totali: ${data.length}`);
-  
-  // Mostra headers
-  console.log('\n📋 HEADERS (riga 1):');
-  data[0].forEach((header, index) => {
-    console.log(`  Colonna ${String.fromCharCode(65 + index)} (${index}): "${header}"`);
-  });
-  
-  // Mostra prime 5 righe di dati
-  console.log('\n📊 PRIME 5 RIGHE DI DATI:');
-  for (let i = 1; i < Math.min(6, data.length); i++) {
-    console.log(`\nRiga ${i + 1}:`);
-    console.log(`  Nome: "${data[i][0]}"`);
-    console.log(`  Telefono: "${data[i][2]}"`);
-    console.log(`  Template (col I/8): "${data[i][8]}"`);
-    console.log(`  Stato WhatsApp (col J/9): "${data[i][9]}" (tipo: ${typeof data[i][9]})`);
-    console.log(`  Lunghezza stato: ${data[i][9] ? data[i][9].length : 0}`);
-    
-    // Controlla se c'è match
-    if (data[i][9] === 'Da Inviare') {
-      console.log('  ✅ MATCH: Da Inviare');
-    } else {
-      console.log('  ❌ NO MATCH');
-      // Mostra caratteri nascosti
-      if (data[i][9]) {
-        console.log(`  Codici caratteri: ${Array.from(String(data[i][9])).map(c => c.charCodeAt(0)).join(', ')}`);
-      }
-    }
-  }
-  
-  // Conta stati
-  console.log('\n📈 CONTEGGIO STATI (colonna J):');
-  const stati = {};
-  for (let i = 1; i < data.length; i++) {
-    const stato = data[i][9];  // Colonna J
-    stati[stato] = (stati[stato] || 0) + 1;
-  }
-  Object.entries(stati).forEach(([stato, count]) => {
-    console.log(`  "${stato}": ${count}`);
-  });
-}
-
 // ====================================
-// NOTE FINALI E ISTRUZIONI
+// WHATSAPP CALL CENTER - VERSIONE OTTIMIZZATA
+// Sistema anti-duplicati integrato
 // ====================================
 
-/**
- * ISTRUZIONI PER LA CONFIGURAZIONE:
- * 
- * STRUTTURA FOGLIO "Clienti":
- * A: Nome
- * B: Cognome
- * C: Telefono
- * D: (vuota)
- * E: Data Chiamata
- * F: Esito
- * G: PDV
- * H: Operatore
- * I: Template (numero 1-5)
- * J: Stato WhatsApp ("Da Inviare", "Inviato", "Errore")
- * K: Data Invio
- * L: Contatto Processato
- * 
- * 1. PRIMA ESECUZIONE:
- *    - Esegui "setupIniziale()" per aggiungere la colonna "Contatto Processato"
- *    - Inserisci la tua API Key WASender in CONFIG.WASENDER_API_KEY
- * 
- * 2. GOOGLE CONTACTS (opzionale):
- *    - Menu Apps Script → Servizi (icona +)
- *    - Cerca "People API" 
- *    - Clicca "Aggiungi" e autorizza
- * 
- * 3. TRIGGER AUTOMATICO:
- *    - Menu Apps Script → Trigger (icona orologio)
- *    - "+ Aggiungi trigger"
- *    - Funzione: processaClientiCompleto
- *    - Tipo: Timer → Ogni 10 minuti
- * 
- * 4. LIMITI (opzionale):
- *    - CONFIG.LIMITE_GIORNALIERO = 50 (per max 50 msg/giorno)
- *    - CONFIG.ORA_INIZIO / ORA_FINE per orario operativo
- * 
- * 5. USO QUOTIDIANO:
- *    - Operatori inseriscono dati con stato "Da Inviare"
- *    - Sistema elabora automaticamente ogni 10 minuti (9-15)
- *    - Menu → "Elabora ora" per invio immediato
- *    - Menu → "Report giornaliero" per statistiche
- */
-
-// Fine del codice// ====================================
-// SETUP E MIGRAZIONE
 // ====================================
-
-/**
- * Setup iniziale - aggiunge colonna "Contatto Processato"
- */
-function setupIniziale() {
-  console.log('🔧 SETUP INIZIALE');
-  console.log('================');
-  
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Clienti');
-  
-  if (!sheet) {
-    console.log('❌ Foglio "Clienti" non trovato!');
-    return;
-  }
-  
-  // Verifica se la colonna L esiste già
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  
-  if (headers[11] === 'Contatto Processato') {
-    console.log('✅ Colonna "Contatto Processato" già presente');
-    return;
-  }
-  
-  // Aggiungi header in colonna L
-  console.log('📋 Aggiunta colonna "Contatto Processato"...');
-  sheet.getRange(1, 12).setValue('Contatto Processato');
-  sheet.getRange(1, 12).setFontWeight('bold').setBackground('#f0f0f0');
-  
-  // Imposta larghezza colonna
-  sheet.setColumnWidth(12, 130);
-  
-  console.log('✅ Setup completato!');
-  console.log('');
-  console.log('📝 PROSSIMI PASSI:');
-  console.log('1. Configura CONFIG.WASENDER_API_KEY nel codice');
-  console.log('2. Se vuoi creare contatti automaticamente:');
-  console.log('   - Vai su Servizi → Aggiungi "People API"');
-  console.log('3. Imposta trigger ogni 10 minuti per "processaClientiCompleto"');
-  console.log('4. (Opzionale) Imposta CONFIG.LIMITE_GIORNALIERO se necessario');
-}
-
-/**
- * Reset colonna contatto processato
- */
-function resetContattoProcessato() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Clienti');
-  if (!sheet) return;
-  
-  const lastRow = sheet.getLastRow();
-  if (lastRow > 1) {
-    // Pulisci colonna L (tranne header)
-    sheet.getRange(2, 12, lastRow - 1, 1).clearContent();
-    console.log(`✅ Reset completato per ${lastRow - 1} righe`);
-  }
-}// ====================================
-// GESTIONE CONTATTI GOOGLE
-// ====================================
-
-/**
- * Gestisce creazione/ricerca contatto Google
- * @returns {string} 'CREATO' | 'ESISTENTE' | 'ERRORE'
- */
-function gestisciContattoGoogle(datiCliente) {
-  try {
-    const telefono = formattaNumeroItalia(datiCliente.telefono);
-    
-    // Cerca contatto esistente
-    const risultatiRicerca = People.People.searchContacts({
-      query: telefono,
-      readMask: 'names,phoneNumbers'
-    });
-    
-    if (risultatiRicerca.results && risultatiRicerca.results.length > 0) {
-      // Contatto già esiste
-      return 'ESISTENTE';
-    }
-    
-    // Crea nuovo contatto
-    const nuovoContatto = {
-      names: [{
-        givenName: datiCliente.nome || '',
-        familyName: datiCliente.cognome || ''
-      }],
-      phoneNumbers: [{
-        value: telefono,
-        type: 'mobile'
-      }]
-    };
-    
-    // Aggiungi PDV se presente
-    if (datiCliente.pdv) {
-      nuovoContatto.organizations = [{
-        name: datiCliente.pdv,
-        title: 'Cliente'
-      }];
-    }
-    
-    // Crea il contatto
-    People.People.createContact({
-      resource: nuovoContatto
-    });
-    
-    return 'CREATO';
-    
-  } catch (error) {
-    console.error('Errore gestione contatto:', error);
-    return 'ERRORE';
-  }
-}
-
-/**
- * Verifica se Google People API è disponibile
- */
-function verificaGooglePeopleAPI() {
-  try {
-    People.People.searchContacts({
-      query: 'test',
-      readMask: 'names',
-      pageSize: 1
-    });
-    console.log('✅ Google People API disponibile');
-    return true;
-  } catch (error) {
-    console.log('⚠️ Google People API non configurata o non disponibile');
-    console.log('   I contatti non verranno creati automaticamente');
-    return false;
-  }
-}// ====================================
 // CONFIGURAZIONE SISTEMA
 // ====================================
 const CONFIG = {
-  WASENDER_API_KEY: 'INSERISCI-LA-TUA-API-KEY-QUI',
+  WASENDER_API_KEY: '',
   WASENDER_URL: 'https://wasenderapi.com/api/send-message',
   DELAY_TRA_INVII: 30000, // 30 secondi tra un invio e l'altro
+  DELAY_DOPO_CONTATTO: 1000, // 1 secondo dopo creazione contatto
   MAX_INVII_PER_SESSIONE: 20, // Massimo messaggi per sessione
+  LIMITE_GIORNALIERO: null, // null = nessun limite, oppure numero (es: 50)
   ORARIO_INIZIO: 9, // Ora inizio invii automatici
-  ORARIO_FINE: 19   // Ora fine invii automatici
+  ORARIO_FINE: 19, // Ora fine invii automatici
+  MINUTI_SOGLIA_DUPLICATI: 30, // Considera duplicato se inviato negli ultimi 30 minuti
+  AUTO_PULIZIA_STATI_BLOCCATI: true // Pulisci automaticamente stati "In Corso" vecchi
 };
 
 // ====================================
@@ -262,12 +31,10 @@ function formattaNumeroItalia(telefono) {
   
   let numero = telefono.toString().trim();
   
-  // Se già ha il +39, restituiscilo così com'è
   if (numero.startsWith('+39')) {
     return numero;
   }
   
-  // Altrimenti aggiungi +39
   return '+39' + numero;
 }
 
@@ -283,17 +50,16 @@ function getTemplate(templateId) {
   
   const templates = templateSheet.getDataRange().getValues();
   
-  // Cerca il template per ID (assumendo che l'ID sia nella colonna A)
   for (let i = 1; i < templates.length; i++) {
     if (templates[i][0] == templateId) { 
       return {
-        messaggio: templates[i][2] || '', // Colonna C = Messaggio
-        immagineUrl: templates[i][3] || null  // Colonna D = URL Immagine (opzionale)
+        messaggio: templates[i][2] || '',
+        immagineUrl: templates[i][3] || null
       };
     }
   }
   
-  // Template di default se non trova l'ID
+  // Template di default
   return {
     messaggio: 'Ciao [nome], ti abbiamo chiamato. Quando possiamo richiamarti?',
     immagineUrl: null
@@ -339,7 +105,6 @@ function inviaWhatsApp(telefono, messaggio, immagineUrl = null) {
     'text': messaggio
   };
   
-  // Aggiungi immagine se presente
   if (immagineUrl && immagineUrl.trim() !== '') {
     payload.imageUrl = immagineUrl.trim();
   }
@@ -371,184 +136,327 @@ function inviaWhatsApp(telefono, messaggio, immagineUrl = null) {
 }
 
 // ====================================
-// FUNZIONE PRINCIPALE
-// ====================================
-
-// ====================================
-// PROCESSO UNIFICATO
+// SISTEMA ANTI-DUPLICATI
 // ====================================
 
 /**
- * Processo principale unificato: crea contatti e invia messaggi
+ * Acquisisce lock per evitare esecuzioni multiple
  */
-function processaClientiCompleto() {
-  // Controllo orario operativo
-  if (!isOrarioOperativo()) {
-    console.log('⏰ Fuori orario operativo (9-15). Elaborazione annullata.');
-    return;
+function acquisciLock() {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    return true;
+  } catch (e) {
+    return false;
   }
-  
-  // Controllo limite giornaliero
-  const messaggiOggi = contaMessaggiInviatiOggi();
-  if (CONFIG.LIMITE_GIORNALIERO && messaggiOggi >= CONFIG.LIMITE_GIORNALIERO) {
-    console.log(`🛑 Raggiunto limite giornaliero (${CONFIG.LIMITE_GIORNALIERO} messaggi)`);
-    logOperazione(`Limite giornaliero raggiunto: ${messaggiOggi}/${CONFIG.LIMITE_GIORNALIERO}`, 'INFO');
-    return;
+}
+
+/**
+ * Rilascia il lock
+ */
+function rilasciaLock() {
+  try {
+    const lock = LockService.getScriptLock();
+    lock.releaseLock();
+  } catch (e) {
+    // Ignora errori di rilascio
   }
-  
+}
+
+/**
+ * Verifica se un messaggio è stato inviato di recente allo stesso numero
+ */
+function isMessaggioInviatoRecentemente(telefono) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Clienti');
+  if (!sheet) return false;
   
-  if (!sheet) {
-    throw new Error('Foglio "Clienti" non trovato!');
-  }
+  const numeroFormattato = formattaNumeroItalia(telefono);
+  const now = new Date();
+  const soglia = new Date(now.getTime() - CONFIG.MINUTI_SOGLIA_DUPLICATI * 60 * 1000);
   
   const data = sheet.getDataRange().getValues();
-  let contattiProcessati = 0;
-  let contattiCreati = 0;
-  let contattiEsistenti = 0;
-  let errori = 0;
   
-  console.log('🚀 Inizio elaborazione completa...');
-  console.log(`📅 ${Utilities.formatDate(new Date(), "Europe/Rome", "dd/MM/yyyy HH:mm:ss")}`);
-  
-  // Debug: mostra quante righe stiamo analizzando
-  console.log(`📊 Analizzando ${data.length - 1} righe di dati...`);
-  
-  // Calcola limite effettivo per questa sessione
-  let limiteSessione = CONFIG.MAX_INVII_PER_SESSIONE;
-  if (CONFIG.LIMITE_GIORNALIERO) {
-    const rimanenti = CONFIG.LIMITE_GIORNALIERO - messaggiOggi;
-    limiteSessione = Math.min(limiteSessione, rimanenti);
+  for (let i = 1; i < data.length; i++) {
+    const telefonoRiga = formattaNumeroItalia(data[i][2]);
+    const dataInvio = data[i][9];
+    const stato = data[i][8];
+    
+    if (telefonoRiga === numeroFormattato && 
+        dataInvio && 
+        stato === 'Inviato' &&
+        new Date(dataInvio) > soglia) {
+      return true;
+    }
   }
   
-  // Processa righe
+  return false;
+}
+
+/**
+ * Pulizia stati "In Corso" rimasti bloccati
+ */
+function pulisciStatiInCorso() {
+  if (!CONFIG.AUTO_PULIZIA_STATI_BLOCCATI) return 0;
+  
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Clienti');
+  if (!sheet) return 0;
+  
+  const data = sheet.getDataRange().getValues();
+  let statiPuliti = 0;
+  const now = new Date();
+  const soglia = new Date(now.getTime() - 10 * 60 * 1000); // 10 minuti fa
+  
   for (let i = 1; i < data.length; i++) {
-    if (contattiProcessati >= limiteSessione) {
-      console.log('⚠️ Raggiunto limite per questa sessione');
-      break;
-    }
+    const stato = data[i][9];
+    const dataInvio = data[i][10];
     
-    const row = data[i];
-    const datiCliente = {
-      nome: row[0],           // A - Nome
-      cognome: row[1],        // B - Cognome  
-      telefono: row[2],       // C - Telefono
-      // row[3] è vuota       // D - Vuota
-      dataChiamata: row[4],   // E - Data Chiamata
-      esito: row[5],          // F - Esito
-      pdv: row[6],            // G - PDV
-      operatore: row[7],      // H - Operatore
-      templateId: row[8],     // I - Template
-      statoWhatsApp: row[9],  // J - Stato WhatsApp
-      dataInvio: row[10],     // K - Data Invio
-      contattoProcessato: row[11] // L - Contatto Processato
-    };
-    
-    // Debug per prima riga
-    if (i === 1) {
-      console.log(`\n🔍 Debug prima riga:`);
-      console.log(`  Nome: "${datiCliente.nome}"`);
-      console.log(`  Stato (col J): "${datiCliente.statoWhatsApp}"`);
-      console.log(`  Telefono: "${datiCliente.telefono}"`);
-      console.log(`  Template (col I): "${datiCliente.templateId}"`);
-      console.log(`  Test: stato === 'Da Inviare'? ${datiCliente.statoWhatsApp === 'Da Inviare'}`);
-    }
-    
-    // Processa solo se "Da Inviare" e con telefono
-    if (datiCliente.statoWhatsApp === 'Da Inviare' && datiCliente.telefono) {
-      try {
-        console.log(`\n📱 Elaboro ${datiCliente.nome} ${datiCliente.cognome}...`);
-        
-        // FASE 1: Gestione contatto Google (se abilitato)
-        if (typeof People !== 'undefined') {
-          try {
-            const risultatoContatto = gestisciContattoGoogle(datiCliente);
-            if (risultatoContatto === 'CREATO') {
-              contattiCreati++;
-              console.log('   ✅ Contatto creato');
-              // Attendi sincronizzazione
-              Utilities.sleep(CONFIG.DELAY_DOPO_CONTATTO);
-            } else {
-              contattiEsistenti++;
-              console.log('   ℹ️ Contatto già esistente');
-            }
-            
-            // Aggiorna stato contatto
-            sheet.getRange(i + 1, 12).setValue('Si');
-            
-          } catch (e) {
-            console.log('   ⚠️ Errore contatto Google:', e.toString());
-            sheet.getRange(i + 1, 12).setValue('Errore');
-            // Continua comunque con l'invio
-          }
-        }
-        
-        // FASE 2: Invio WhatsApp
-        const template = getTemplate(datiCliente.templateId || '1');
-        const messaggioPersonalizzato = sostituisciShortcode(template.messaggio, datiCliente);
-        const immagineFinale = template.immagineUrl;
-        
-        console.log('   📤 Invio WhatsApp...');
-        inviaWhatsApp(datiCliente.telefono, messaggioPersonalizzato, immagineFinale);
-        
-        // Aggiorna stato
-        sheet.getRange(i + 1, 10).setValue('Inviato');  // Colonna J
-        sheet.getRange(i + 1, 11).setValue(new Date()); // Colonna K
-        
-        contattiProcessati++;
-        console.log('   ✅ Completato!');
-        
-        // Pausa tra invii
-        if (contattiProcessati < limiteSessione && i < data.length - 1) {
-          Utilities.sleep(CONFIG.DELAY_TRA_INVII);
-        }
-        
-      } catch (error) {
-        console.error(`   ❌ Errore: ${error.toString()}`);
-        
-        sheet.getRange(i + 1, 10).setValue('Errore');  // Colonna J
-        logErrore(
-          formattaNumeroItalia(datiCliente.telefono),
-          error.toString(),
-          `${datiCliente.nome} ${datiCliente.cognome}`
-        );
-        
-        errori++;
+    if (stato === 'In Corso') {
+      if (!dataInvio || new Date(dataInvio) < soglia) {
+        sheet.getRange(i + 1, 9).setValue('Da Inviare');
+        statiPuliti++;
       }
     }
   }
   
-  // Riepilogo
-  console.log('\n📊 RIEPILOGO ELABORAZIONE');
-  console.log('========================');
-  console.log(`✅ Messaggi inviati: ${contattiProcessati}`);
-  console.log(`📇 Contatti creati: ${contattiCreati}`);
-  console.log(`ℹ️ Contatti esistenti: ${contattiEsistenti}`);
-  console.log(`❌ Errori: ${errori}`);
-  console.log(`📅 Completato: ${new Date().toLocaleString('it-IT')}`);
-  
-  if (CONFIG.LIMITE_GIORNALIERO) {
-    console.log(`📈 Totale oggi: ${messaggiOggi + contattiProcessati}/${CONFIG.LIMITE_GIORNALIERO}`);
+  if (statiPuliti > 0) {
+    logOperazione(`Ripuliti ${statiPuliti} stati "In Corso" bloccati`, 'INFO');
   }
   
-  logOperazione(
-    `Elaborazione: ${contattiProcessati} inviati, ${contattiCreati} contatti creati, ${errori} errori`,
-    'INFO'
-  );
+  return statiPuliti;
 }
+
+// ====================================
+// GESTIONE CONTATTI GOOGLE
+// ====================================
+
+/**
+ * Gestisce creazione/ricerca contatto Google
+ */
+function gestisciContattoGoogle(datiCliente) {
+  try {
+    const telefono = formattaNumeroItalia(datiCliente.telefono);
+    
+    const risultatiRicerca = People.People.searchContacts({
+      query: telefono,
+      readMask: 'names,phoneNumbers'
+    });
+    
+    if (risultatiRicerca.results && risultatiRicerca.results.length > 0) {
+      return 'ESISTENTE';
+    }
+    
+    const nuovoContatto = {
+      names: [{
+        givenName: datiCliente.nome || '',
+        familyName: datiCliente.cognome || ''
+      }],
+      phoneNumbers: [{
+        value: telefono,
+        type: 'mobile'
+      }]
+    };
+    
+    if (datiCliente.pdv) {
+      nuovoContatto.organizations = [{
+        name: datiCliente.pdv,
+        title: 'Cliente'
+      }];
+    }
+    
+    People.People.createContact({
+      resource: nuovoContatto
+    });
+    
+    return 'CREATO';
+    
+  } catch (error) {
+    return 'ERRORE';
+  }
+}
+
+// ====================================
+// FUNZIONE PRINCIPALE ANTI-DUPLICATI
+// ====================================
+
+/**
+ * Processo principale con protezione anti-duplicati
+ */
+function processaClienti() {
+  // Controllo lock per evitare esecuzioni multiple
+  if (!acquisciLock()) {
+    return;
+  }
+
+  try {
+    // Pulizia automatica stati bloccati
+    pulisciStatiInCorso();
+    
+    // Controllo orario operativo
+    if (!isOrarioOperativo()) {
+      return;
+    }
+    
+    // Controllo limite giornaliero
+    const messaggiOggi = contaMessaggiInviatiOggi();
+    if (CONFIG.LIMITE_GIORNALIERO && messaggiOggi >= CONFIG.LIMITE_GIORNALIERO) {
+      logOperazione(`Raggiunto limite giornaliero: ${messaggiOggi}/${CONFIG.LIMITE_GIORNALIERO}`, 'INFO');
+      return;
+    }
+    
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Clienti');
+    if (!sheet) {
+      throw new Error('Foglio "Clienti" non trovato!');
+    }
+    
+    // Sincronizza dati
+    SpreadsheetApp.flush();
+    
+    const data = sheet.getDataRange().getValues();
+    let contattiProcessati = 0;
+    let contattiCreati = 0;
+    let contattiEsistenti = 0;
+    let errori = 0;
+    let duplicatiEvitati = 0;
+    
+    // Calcola limite effettivo per questa sessione
+    let limiteSessione = CONFIG.MAX_INVII_PER_SESSIONE;
+    if (CONFIG.LIMITE_GIORNALIERO) {
+      const rimanenti = CONFIG.LIMITE_GIORNALIERO - messaggiOggi;
+      limiteSessione = Math.min(limiteSessione, rimanenti);
+    }
+    
+    // Processa righe
+    for (let i = 1; i < data.length; i++) {
+      if (contattiProcessati >= limiteSessione) {
+        break;
+      }
+      
+      const row = data[i];
+      const datiCliente = {
+        nome: row[0],
+        cognome: row[1],
+        telefono: row[2],
+        dataChiamata: row[3],
+        esito: row[4],
+        pdv: row[5],
+        operatore: row[6],
+        templateId: row[7],
+        statoWhatsApp: row[8],
+        dataInvio: row[9],
+        contattoProcessato: row[10]
+      };
+      
+      // Processa solo se "Da Inviare" e con telefono
+      if (datiCliente.statoWhatsApp === 'Da Inviare' && datiCliente.telefono) {
+        
+        // Controllo anti-duplicati
+        if (isMessaggioInviatoRecentemente(datiCliente.telefono)) {
+          duplicatiEvitati++;
+          sheet.getRange(i + 1, 9).setValue('Duplicato Evitato');
+          SpreadsheetApp.flush();
+          continue;
+        }
+        
+        // Doppio controllo dello stato
+        const statoCorrente = sheet.getRange(i + 1, 9).getValue();
+        if (statoCorrente !== 'Da Inviare') {
+          continue;
+        }
+        
+        try {
+          // Cambia stato PRIMA dell'invio
+          sheet.getRange(i + 1, 9).setValue('In Corso');
+          sheet.getRange(i + 1, 10).setValue(new Date(), "Europe/Rome", "dd/MM/yyyy HH:mm:ss");
+          SpreadsheetApp.flush();
+          
+          // Gestione contatto Google (se disponibile)
+          if (typeof People !== 'undefined') {
+            try {
+              const risultatoContatto = gestisciContattoGoogle(datiCliente);
+              if (risultatoContatto === 'CREATO') {
+                contattiCreati++;
+                Utilities.sleep(CONFIG.DELAY_DOPO_CONTATTO);
+              } else {
+                contattiEsistenti++;
+              }
+              
+              sheet.getRange(i + 1, 11).setValue('Si');
+              
+            } catch (e) {
+              sheet.getRange(i + 1, 11).setValue('Errore');
+            }
+          }
+          
+          // Invio WhatsApp
+          const template = getTemplate(datiCliente.templateId || '1');
+          const messaggioPersonalizzato = sostituisciShortcode(template.messaggio, datiCliente);
+          const immagineFinale = template.immagineUrl;
+          
+          // Controllo finale prima dell'invio
+          const ultimoControlloStato = sheet.getRange(i + 1, 9).getValue();
+          if (ultimoControlloStato !== 'In Corso') {
+            continue;
+          }
+          
+          inviaWhatsApp(datiCliente.telefono, messaggioPersonalizzato, immagineFinale);
+          
+          // Aggiorna stato dopo invio riuscito
+          sheet.getRange(i + 1, 9).setValue('Inviato');
+          sheet.getRange(i + 1, 10).setValue(new Date(), "Europe/Rome", "dd/MM/yyyy HH:mm:ss");
+          SpreadsheetApp.flush();
+          
+          logInvioRiuscito(datiCliente.telefono, `${datiCliente.nome} ${datiCliente.cognome}`);
+          
+          contattiProcessati++;
+          
+          // Pausa tra invii
+          if (contattiProcessati < limiteSessione && i < data.length - 1) {
+            Utilities.sleep(CONFIG.DELAY_TRA_INVII);
+          }
+          
+        } catch (error) {
+          sheet.getRange(i + 1, 9).setValue('Errore');
+          sheet.getRange(i + 1, 10).setValue(new Date(), "Europe/Rome", "dd/MM/yyyy HH:mm:ss");
+          SpreadsheetApp.flush();
+          
+          logErrore(
+            formattaNumeroItalia(datiCliente.telefono),
+            error.toString(),
+            `${datiCliente.nome} ${datiCliente.cognome}`
+          );
+          
+          errori++;
+        }
+      }
+    }
+    
+    // Log riepilogo se ci sono stati invii
+    if (contattiProcessati > 0 || duplicatiEvitati > 0 || errori > 0) {
+      logOperazione(
+        `Elaborazione: ${contattiProcessati} inviati, ${duplicatiEvitati} duplicati evitati, ${errori} errori`,
+        'INFO'
+      );
+    }
+    
+  } finally {
+    rilasciaLock();
+  }
+}
+
+// ====================================
+// FUNZIONI UTILITA'
+// ====================================
 
 /**
  * Controlla se siamo in orario operativo
  */
 function isOrarioOperativo() {
-  // Forza timezone italiano
   const now = new Date();
   const oraItalia = Utilities.formatDate(now, "Europe/Rome", "HH");
   const oraCorrente = parseInt(oraItalia);
   
-  console.log(`Controllo orario: ${oraCorrente}:00 (Roma)`);
-  
-  return oraCorrente >= CONFIG.ORA_INIZIO && oraCorrente < CONFIG.ORA_FINE;
+  return oraCorrente >= CONFIG.ORARIO_INIZIO && oraCorrente < CONFIG.ORARIO_FINE;
 }
 
 /**
@@ -563,7 +471,7 @@ function contaMessaggiInviatiOggi() {
   let count = 0;
   
   for (let i = 1; i < data.length; i++) {
-    const dataInvio = data[i][10]; // Colonna K - Data Invio
+    const dataInvio = data[i][9];
     if (dataInvio) {
       const dataInvioStr = Utilities.formatDate(new Date(dataInvio), "Europe/Rome", "yyyy-MM-dd");
       if (dataInvioStr === oggi) {
@@ -576,22 +484,26 @@ function contaMessaggiInviatiOggi() {
 }
 
 /**
- * Versione con controlli orario per automazione
+ * Conta messaggi in coda
  */
-function processaNuoviClientiConControlli() {
-  // Verifica orario
-  const ora = new Date().getHours();
-  if (ora < CONFIG.ORARIO_INIZIO || ora >= CONFIG.ORARIO_FINE) {
-    console.log(`⏰ Fuori orario lavorativo (${CONFIG.ORARIO_INIZIO}-${CONFIG.ORARIO_FINE}). Elaborazione annullata.`);
-    return;
+function contaMessaggiInCoda() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Clienti');
+  if (!sheet) return 0;
+  
+  const data = sheet.getDataRange().getValues();
+  let count = 0;
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][9] === 'Da Inviare') {
+      count++;
+    }
   }
   
-  // Esegui elaborazione
-  processaNuoviClienti();
+  return count;
 }
 
 // ====================================
-// FUNZIONI UTILITA'
+// LOGGING
 // ====================================
 
 /**
@@ -600,27 +512,23 @@ function processaNuoviClientiConControlli() {
 function logOperazione(messaggio, tipo = 'INFO', telefono = '', dettagliErrore = '') {
   let logSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log');
   
-  // Se non esiste il foglio Log, crealo con nuova struttura
   if (!logSheet) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     logSheet = ss.insertSheet('Log');
     logSheet.getRange(1, 1, 1, 5)
-      .setValues([['Data/Ora', 'Tipo', 'Messaggio', 'Telefono', 'Dettagli Errore']])
+      .setValues([['Data/Ora', 'Tipo', 'Messaggio', 'Telefono', 'Dettagli']])
       .setFontWeight('bold')
       .setBackground('#f0f0f0');
     
-    // Imposta larghezza colonne
-    logSheet.setColumnWidth(1, 150); // Data/Ora
-    logSheet.setColumnWidth(2, 80);  // Tipo
-    logSheet.setColumnWidth(3, 250); // Messaggio
-    logSheet.setColumnWidth(4, 120); // Telefono
-    logSheet.setColumnWidth(5, 300); // Dettagli Errore
+    logSheet.setColumnWidth(1, 150);
+    logSheet.setColumnWidth(2, 80);
+    logSheet.setColumnWidth(3, 250);
+    logSheet.setColumnWidth(4, 120);
+    logSheet.setColumnWidth(5, 300);
   }
   
-  // Aggiungi riga di log
   logSheet.appendRow([new Date(), tipo, messaggio, telefono, dettagliErrore]);
   
-  // Se è un errore, colora la riga
   if (tipo === 'ERRORE') {
     const lastRow = logSheet.getLastRow();
     logSheet.getRange(lastRow, 1, 1, 5).setBackground('#ffe6e6');
@@ -636,9 +544,20 @@ function logErrore(telefono, errore, nomeCliente = '') {
 }
 
 /**
- * Mostra dashboard con statistiche
+ * Log specifico per invii riusciti
  */
-function creaDashboard() {
+function logInvioRiuscito(telefono, nomeCliente) {
+  logOperazione(`Messaggio inviato a ${nomeCliente}`, 'INVIO', telefono);
+}
+
+// ====================================
+// DASHBOARD E REPORT
+// ====================================
+
+/**
+ * Dashboard con statistiche
+ */
+function mostraDashboard() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Clienti');
   const data = sheet.getDataRange().getValues();
   
@@ -647,23 +566,24 @@ function creaDashboard() {
     daInviare: 0,
     inviati: 0,
     errori: 0,
+    inCorso: 0,
     inviatOggi: 0
   };
   
   const oggi = new Date().toDateString();
   
-  // Analizza dati (salta header)
   for (let i = 1; i < data.length; i++) {
-    if (data[i][2]) { // Se c'è un telefono
+    if (data[i][2]) {
       stats.totale++;
       
-      const stato = data[i][8]; // Colonna I - Stato WhatsApp
-      const dataInvio = data[i][9]; // Colonna J - Data Invio
+      const stato = data[i][9];
+      const dataInvio = data[i][10];
       
       switch(stato) {
         case 'Da Inviare': stats.daInviare++; break;
         case 'Inviato': stats.inviati++; break;
         case 'Errore': stats.errori++; break;
+        case 'In Corso': stats.inCorso++; break;
       }
       
       if (dataInvio && new Date(dataInvio).toDateString() === oggi) {
@@ -672,20 +592,45 @@ function creaDashboard() {
     }
   }
   
-  // Mostra risultati
-  console.log('');
-  console.log('📊 DASHBOARD INVII WHATSAPP');
-  console.log('================================');
+  console.log('📊 DASHBOARD WHATSAPP CALL CENTER');
+  console.log('=================================');
   console.log(`📱 Totale contatti: ${stats.totale}`);
   console.log(`📤 Da inviare: ${stats.daInviare}`);
   console.log(`✅ Inviati totali: ${stats.inviati}`);
+  console.log(`⏳ In corso: ${stats.inCorso}`);
   console.log(`❌ Errori: ${stats.errori}`);
   console.log(`📅 Inviati oggi: ${stats.inviatOggi}`);
-  console.log('================================');
-  console.log('');
+  
+  if (CONFIG.LIMITE_GIORNALIERO) {
+    const percentuale = Math.round((stats.inviatOggi / CONFIG.LIMITE_GIORNALIERO) * 100);
+    console.log(`📈 Limite giornaliero: ${stats.inviatOggi}/${CONFIG.LIMITE_GIORNALIERO} (${percentuale}%)`);
+  }
+  
+  console.log('=================================');
   
   return stats;
 }
+
+/**
+ * Report giornaliero
+ */
+function reportGiornaliero() {
+  console.log('📊 REPORT GIORNALIERO');
+  console.log('===================');
+  console.log(`Data: ${Utilities.formatDate(new Date(), "Europe/Rome", "dd/MM/yyyy")}`);
+  
+  const stats = mostraDashboard();
+  
+  if (!isOrarioOperativo()) {
+    console.log('\n⏰ FUORI ORARIO OPERATIVO');
+  }
+  
+  return stats;
+}
+
+// ====================================
+// FUNZIONI DI GESTIONE
+// ====================================
 
 /**
  * Resetta errori per nuovo tentativo
@@ -696,8 +641,8 @@ function riprovaErrori() {
   let resettati = 0;
   
   for (let i = 1; i < data.length; i++) {
-    if (data[i][8] === 'Errore') { // Stato = Errore
-      sheet.getRange(i + 1, 9).setValue('Da Inviare'); // Resetta a "Da Inviare"
+    if (data[i][9] === 'Errore') {
+      sheet.getRange(i + 1, 9).setValue('Da Inviare');
       resettati++;
     }
   }
@@ -708,252 +653,62 @@ function riprovaErrori() {
   return resettati;
 }
 
-// ====================================
-// MENU E INTERFACCIA
-// ====================================
-
 /**
- * Crea menu personalizzato all'apertura
+ * Reset manuale stati "In Corso"
  */
-function onOpen() {
-  const ui = SpreadsheetApp.getUi();
-  
-  // Conta messaggi in coda
-  const inCoda = contaMessaggiInCoda();
-  const menuTitle = inCoda > 0 ? `📱 WhatsApp (${inCoda} in coda)` : '📱 WhatsApp Call Center';
-  
-  ui.createMenu(menuTitle)
-    .addItem('📤 Elabora ora', 'processaClientiCompleto')
-    .addItem('📊 Mostra dashboard', 'creaDashboard')
-    .addItem('🔄 Riprova errori', 'riprovaErrori')
-    .addSeparator()
-    .addItem('❌ Mostra ultimi errori', 'mostraUltimiErrori')
-    .addItem('🧹 Pulisci log vecchi', 'pulisciLogVecchi')
-    .addItem('📈 Report giornaliero', 'reportGiornaliero')
-    .addSeparator()
-    .addItem('🧪 Test invio singolo', 'testInvioSingolo')
-    .addItem('⚙️ Verifica configurazione', 'verificaConfigurazione')
-    .addItem('🕐 Test orario', 'testOrario')
-    .addItem('🔍 Debug dati clienti', 'debugDatiClienti')
-    .addItem('📋 Verifica struttura fogli', 'verificaStruttura')
-    .addSeparator()
-    .addItem('🔄 Reset elaborazione bloccata', 'resetElaborazioneInCorso')
-    .addToUi();
-}
-
-/**
- * Conta messaggi in coda
- */
-function contaMessaggiInCoda() {
+function resetStatiInCorso() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Clienti');
-  if (!sheet) return 0;
-  
   const data = sheet.getDataRange().getValues();
-  let count = 0;
+  let resetCount = 0;
   
   for (let i = 1; i < data.length; i++) {
-    if (data[i][9] === 'Da Inviare') { // Colonna J - Stato WhatsApp
-      count++;
+    if (data[i][9] === 'In Corso') {
+      sheet.getRange(i + 1, 9).setValue('Da Inviare');
+      resetCount++;
     }
   }
   
-  return count;
+  console.log(`🔄 Reset ${resetCount} stati "In Corso"`);
+  logOperazione(`Reset manuale: ${resetCount} stati resettati da "In Corso"`, 'INFO');
+  
+  return resetCount;
 }
 
 /**
- * Report giornaliero dettagliato
+ * Setup iniziale
  */
-function reportGiornaliero() {
-  console.log('📊 REPORT GIORNALIERO');
-  console.log('===================');
-  console.log(`Data: ${Utilities.formatDate(new Date(), "Europe/Rome", "dd/MM/yyyy")}`);
-  console.log(`Orario operativo: ${CONFIG.ORA_INIZIO}:00 - ${CONFIG.ORA_FINE}:00`);
-  
-  const stats = creaDashboard();
-  
-  console.log(`\n📈 STATISTICHE:`);
-  console.log(`Messaggi inviati oggi: ${stats.inviatOggi}`);
-  console.log(`In coda: ${stats.daInviare}`);
-  console.log(`Errori: ${stats.errori}`);
-  
-  if (CONFIG.LIMITE_GIORNALIERO) {
-    const percentuale = Math.round((stats.inviatOggi / CONFIG.LIMITE_GIORNALIERO) * 100);
-    console.log(`\n📊 Limite giornaliero: ${stats.inviatOggi}/${CONFIG.LIMITE_GIORNALIERO} (${percentuale}%)`);
-    
-    if (stats.inviatOggi >= CONFIG.LIMITE_GIORNALIERO) {
-      console.log('⚠️ LIMITE GIORNALIERO RAGGIUNTO!');
-    }
-  }
-  
-  // Verifica orario
-  if (!isOrarioOperativo()) {
-    console.log('\n⏰ FUORI ORARIO OPERATIVO');
-    console.log('I messaggi in coda verranno elaborati domani');
-  }
-  
-  // Statistiche per PDV
-  console.log('\n📍 MESSAGGI PER PDV:');
-  const perPdv = getStatistichePerPDV();
-  Object.entries(perPdv).forEach(([pdv, count]) => {
-    console.log(`${pdv}: ${count} messaggi`);
-  });
-}
-
-/**
- * Ottieni statistiche per PDV
- */
-function getStatistichePerPDV() {
+function setupIniziale() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Clienti');
-  if (!sheet) return {};
   
-  const data = sheet.getDataRange().getValues();
-  const oggi = Utilities.formatDate(new Date(), "Europe/Rome", "yyyy-MM-dd");
-  const stats = {};
-  
-  for (let i = 1; i < data.length; i++) {
-    const dataInvio = data[i][10];  // Colonna K - Data Invio
-    const pdv = data[i][6] || 'Non specificato';  // Colonna G - PDV
-    
-    if (dataInvio) {
-      const dataInvioStr = Utilities.formatDate(new Date(dataInvio), "Europe/Rome", "yyyy-MM-dd");
-      if (dataInvioStr === oggi) {
-        stats[pdv] = (stats[pdv] || 0) + 1;
-      }
-    }
-  }
-  
-  return stats;
-}
-
-// ====================================
-// FUNZIONI GESTIONE LOG ED ERRORI
-// ====================================
-
-/**
- * Mostra ultimi errori dal log
- */
-function mostraUltimiErrori() {
-  const logSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log');
-  
-  if (!logSheet) {
-    console.log('📋 Nessun log presente ancora');
+  if (!sheet) {
+    console.log('❌ Foglio "Clienti" non trovato!');
     return;
   }
   
-  const data = logSheet.getDataRange().getValues();
-  const errori = [];
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   
-  // Raccogli solo gli errori (salta header)
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][1] === 'ERRORE') {
-      errori.push({
-        data: data[i][0],
-        messaggio: data[i][2],
-        telefono: data[i][3],
-        dettaglio: data[i][4]
-      });
-    }
-  }
-  
-  if (errori.length === 0) {
-    console.log('✅ Nessun errore trovato nel log!');
+  if (headers[11] === 'Contatto Processato') {
+    console.log('✅ Colonna "Contatto Processato" già presente');
     return;
   }
   
-  // Mostra ultimi 10 errori
-  console.log('❌ ULTIMI ERRORI WHATSAPP');
-  console.log('=========================');
+  sheet.getRange(1, 11).setValue('Contatto Processato');
+  sheet.getRange(1, 11).setFontWeight('bold').setBackground('#f0f0f0');
+  sheet.setColumnWidth(12, 130);
   
-  const ultimi10 = errori.slice(-10).reverse();
-  
-  ultimi10.forEach((errore, index) => {
-    console.log(`\n${index + 1}. ${new Date(errore.data).toLocaleString('it-IT')}`);
-    console.log(`   📱 Telefono: ${errore.telefono}`);
-    console.log(`   ❌ Errore: ${errore.dettaglio}`);
-    console.log(`   👤 ${errore.messaggio}`);
-  });
-  
-  console.log(`\n📊 Totale errori nel log: ${errori.length}`);
+  console.log('✅ Setup completato!');
+  console.log('📝 Configura CONFIG.WASENDER_API_KEY e imposta trigger automatico');
 }
-
-/**
- * Pulisce log più vecchi di 30 giorni
- */
-function pulisciLogVecchi() {
-  const logSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log');
-  
-  if (!logSheet) {
-    console.log('📋 Nessun log da pulire');
-    return;
-  }
-  
-  const data = logSheet.getDataRange().getValues();
-  const oggi = new Date();
-  const trentaGiorniFa = new Date(oggi.getTime() - 30 * 24 * 60 * 60 * 1000);
-  
-  let righeEliminate = 0;
-  
-  // Parti dal fondo per non alterare gli indici mentre elimini
-  for (let i = data.length - 1; i > 0; i--) {
-    const dataRiga = new Date(data[i][0]);
-    
-    if (dataRiga < trentaGiorniFa) {
-      logSheet.deleteRow(i + 1);
-      righeEliminate++;
-    }
-  }
-  
-  console.log(`🧹 Eliminate ${righeEliminate} righe di log più vecchie di 30 giorni`);
-  logOperazione(`Pulizia log: eliminate ${righeEliminate} righe vecchie`, 'INFO');
-}
-
-/**
- * Report errori per numero
- */
-function reportErroriPerNumero() {
-  const logSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log');
-  
-  if (!logSheet) {
-    console.log('📋 Nessun log presente');
-    return;
-  }
-  
-  const data = logSheet.getDataRange().getValues();
-  const erroriPerNumero = {};
-  
-  // Conta errori per numero
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][1] === 'ERRORE' && data[i][3]) {
-      const numero = data[i][3];
-      erroriPerNumero[numero] = (erroriPerNumero[numero] || 0) + 1;
-    }
-  }
-  
-  // Ordina per numero di errori
-  const numeriOrdinati = Object.entries(erroriPerNumero)
-    .sort((a, b) => b[1] - a[1]);
-  
-  console.log('📊 NUMERI CON PIÙ ERRORI');
-  console.log('=======================');
-  
-  numeriOrdinati.slice(0, 10).forEach(([numero, count]) => {
-    console.log(`${numero}: ${count} errori`);
-  });
-}
-
-// ====================================
-// FUNZIONI DI TEST E VERIFICA
-// ====================================
 
 /**
  * Test invio singolo
  */
 function testInvioSingolo() {
-  const NUMERO_TEST = '3401234567'; // ← INSERISCI IL TUO NUMERO
+  const NUMERO_TEST = '3408076933'; // ← INSERISCI IL TUO NUMERO
   
   console.log('=== TEST INVIO SINGOLO ===');
   
-  const messaggioTest = 'Test sistema WhatsApp Call Center - Messaggio di prova! ✅';
+  const messaggioTest = 'Test sistema WhatsApp Call Center - Anti-duplicati attivo! ✅';
   
   try {
     console.log('Numero test:', NUMERO_TEST);
@@ -967,68 +722,61 @@ function testInvioSingolo() {
   }
 }
 
-/**
- * Verifica configurazione sistema
- */
-function verificaConfigurazione() {
-  console.log('');
-  console.log('⚙️ VERIFICA CONFIGURAZIONE');
-  console.log('==========================');
-  console.log('✓ API Key configurata:', CONFIG.WASENDER_API_KEY !== 'INSERISCI-LA-TUA-API-KEY-QUI' ? 'SI' : '❌ NO - INSERIRE API KEY!');
-  console.log('✓ URL API:', CONFIG.WASENDER_URL);
-  console.log('✓ Delay tra invii:', CONFIG.DELAY_TRA_INVII/1000, 'secondi');
-  console.log('✓ Max invii per sessione:', CONFIG.MAX_INVII_PER_SESSIONE);
-  console.log('✓ Orario invii:', `${CONFIG.ORARIO_INIZIO}:00 - ${CONFIG.ORARIO_FINE}:00`);
-  console.log('');
-}
+// ====================================
+// MENU PRINCIPALE
+// ====================================
 
 /**
- * Verifica struttura fogli
+ * Crea menu personalizzato
  */
-function verificaStruttura() {
-  console.log('');
-  console.log('📋 VERIFICA STRUTTURA FOGLI');
-  console.log('===========================');
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
   
-  // Verifica foglio Clienti
-  const clientiSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Clienti');
-  if (clientiSheet) {
-    console.log('✅ Foglio "Clienti" presente');
-    const headers = clientiSheet.getRange(1, 1, 1, 12).getValues()[0];
-    console.log('   Colonne:', headers.filter((h, i) => h || i === 3).map((h, i) => h || '(vuota)').join(', '));
-    
-    // Verifica headers critici
-    if (headers[9] !== 'Stato WhatsApp') {
-      console.log('⚠️ Colonna "Stato WhatsApp" non in posizione J (9)');
-    }
-    if (headers[11] !== 'Contatto Processato') {
-      console.log('⚠️ Colonna "Contatto Processato" non in posizione L (11)');
-    }
-  } else {
-    console.log('❌ Foglio "Clienti" MANCANTE!');
-  }
+  const inCoda = contaMessaggiInCoda();
+  const menuTitle = inCoda > 0 ? `📱 WhatsApp (${inCoda} in coda)` : '📱 WhatsApp Call Center';
   
-  // Verifica foglio Template
-  const templateSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Template');
-  if (templateSheet) {
-    console.log('✅ Foglio "Template" presente');
-    const numTemplates = templateSheet.getLastRow() - 1;
-    console.log(`   Template disponibili: ${numTemplates}`);
-  } else {
-    console.log('❌ Foglio "Template" MANCANTE!');
-  }
-  
-  // Verifica foglio Log
-  const logSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log');
-  if (logSheet) {
-    console.log('✅ Foglio "Log" presente');
-    const logData = logSheet.getDataRange().getValues();
-    const errori = logData.filter(row => row[1] === 'ERRORE').length;
-    console.log(`   Totale log: ${logData.length - 1}`);
-    console.log(`   Errori registrati: ${errori}`);
-  } else {
-    console.log('⚠️ Foglio "Log" non presente (verrà creato automaticamente)');
-  }
-  
-  console.log('');
+  ui.createMenu(menuTitle)
+    .addItem('📤 Elabora ora', 'processaClienti')
+    .addItem('📊 Dashboard', 'mostraDashboard')
+    .addItem('📈 Report giornaliero', 'reportGiornaliero')
+    .addSeparator()
+    .addItem('🔄 Riprova errori', 'riprovaErrori')
+    .addItem('🔄 Reset stati "In Corso"', 'resetStatiInCorso')
+    .addSeparator()
+    .addItem('🧪 Test invio singolo', 'testInvioSingolo')
+    .addItem('⚙️ Setup iniziale', 'setupIniziale')
+    .addToUi();
 }
+
+// ====================================
+// ISTRUZIONI FINALI
+// ====================================
+
+/*
+ISTRUZIONI PER LA CONFIGURAZIONE:
+
+STRUTTURA FOGLIO "Clienti":
+A: Nome | B: Cognome | C: Telefono | D: Data Chiamata
+E: Esito | F: PDV | G: Operatore | H: Template | I: Stato WhatsApp
+J: Data Invio | K: Contatto Processato
+
+PASSI PER L'INSTALLAZIONE:
+1. Esegui "setupIniziale()" 
+2. Configura CONFIG.WASENDER_API_KEY
+3. (Opzionale) Abilita Google People API per contatti automatici
+4. Imposta trigger automatico ogni 10 minuti per "processaClienti"
+5. Configura CONFIG.LIMITE_GIORNALIERO se necessario
+
+CARATTERISTICHE ANTI-DUPLICATI:
+- Lock per evitare esecuzioni multiple
+- Controllo messaggi inviati negli ultimi 30 minuti
+- Stato "In Corso" per prevenire doppi invii
+- Pulizia automatica stati bloccati
+- Sincronizzazione forzata dei dati
+
+USO QUOTIDIANO:
+- Operatori inseriscono dati con stato "Da Inviare"
+- Sistema elabora automaticamente ogni 10 minuti
+- Menu → "Elabora ora" per invio immediato
+- Menu → "Dashboard" per statistiche
+*/
