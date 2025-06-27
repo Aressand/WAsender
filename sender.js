@@ -367,7 +367,7 @@ function processaClienti() {
         try {
           // Cambia stato PRIMA dell'invio
           sheet.getRange(i + 1, 9).setValue('In Corso');
-          sheet.getRange(i + 1, 10).setValue(new Date(), "Europe/Rome", "dd/MM/yyyy HH:mm:ss");
+          sheet.getRange(i + 1, 10).setValue(new Date(),);
           SpreadsheetApp.flush();
           
           // Gestione contatto Google (se disponibile)
@@ -403,7 +403,7 @@ function processaClienti() {
           
           // Aggiorna stato dopo invio riuscito
           sheet.getRange(i + 1, 9).setValue('Inviato');
-          sheet.getRange(i + 1, 10).setValue(new Date(), "Europe/Rome", "dd/MM/yyyy HH:mm:ss");
+          sheet.getRange(i + 1, 10).setValue(new Date(),);
           SpreadsheetApp.flush();
           
           logInvioRiuscito(datiCliente.telefono, `${datiCliente.nome} ${datiCliente.cognome}`);
@@ -417,7 +417,7 @@ function processaClienti() {
           
         } catch (error) {
           sheet.getRange(i + 1, 9).setValue('Errore');
-          sheet.getRange(i + 1, 10).setValue(new Date(), "Europe/Rome", "dd/MM/yyyy HH:mm:ss");
+          sheet.getRange(i + 1, 10).setValue(new Date(),);
           SpreadsheetApp.flush();
           
           logErrore(
@@ -679,6 +679,7 @@ function resetStatiInCorso() {
  */
 function setupIniziale() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Clienti');
+  sheet.getRange('J:J').setNumberFormat('dd/mm/yyyy hh:mm:ss');
   
   if (!sheet) {
     console.log('❌ Foglio "Clienti" non trovato!');
